@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset ="UTF-8">
+    <title>HokieFit - {{ name }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0px; background: #f4f4f4; }
+        header { background: maroon; color: white; padding: 12px 20px;}
+        header small { color: #f5c6a5;}
+        nav { padding: 10px 20px; background: white; border-bottom: 1px solid #ddd;}
+        nav a { margin-right: 12px; color: maroon;}
+
+    </style>
+</head>
+<body>
+    <header>
+        <b>HokieFit</b> &nbsp; <small>Connected to PostgreSQL {{ version }} (Supabase)</small>
+    </header>
+
+    <nav>
+        {% for t in tables %}
+            <a href="{{ url_for('show_table', name=t) }}" class="{{ 'current' if t == name}}">{{ t }}</a>
+        {% endfor %}
+    </nav>
+
+    <main>
+        {% for category, message in get_flashed_messages(with_categories=true) %}
+            <div class="{{ category }}">{{ message }}</div>
+        {% endfor %}
+
+        <h2>{{ name }} ({{ rows|length }} rows)</h2>
+
+        <div class="box">
+            <h3>Insert a new row</h3>
+            <form class="insert" method="post" action="{{ url_for('insert_row', name=name) }}">
+               {% for field, ftype in table.fields %}
+                    <label>{{ field }}
+                        <select name="{{ field }}">
+                            <option value="">-- choose --</option>
+                            {% for value in table.get_field_values(field) %}
+                                <option value="{{ value }}">{{ text }}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="{{ field }}">
+                            <option value="">--</option><option>true</option><option>false</option>
+                        </select>
+                        <input type="datatime-local" name="{{ field }}">
+                        <input type="number" step="any" name="{{ field }}">
+                        <input type="{{ ftype }}" name="{{ field }}">
+                    </label>
+                <br><button type="submit">Insert</button>
+            </form>
+        </div>
+
+        <table>
+            <tr>
+                <th></th>
+            </tr>
+            <tr>
+                <td>
+                    <form method="post" action="{{  url_for('delete_row', name=name) }}">
+                            onsubmit="return confirm('Delete this row?');"
+                        <button class="delete">Delete</button>
+                    </form>
+                </td>  
+            </tr>
+        </table>
+    </main>
+</body>
+</html>
