@@ -35,19 +35,27 @@
             <form class="insert" method="post" action="{{ url_for('insert_row', name=name) }}">
                {% for field, ftype in table.fields %}
                     <label>{{ field }}
+                        {% if ftype.startswith('fk:') %}
                         <select name="{{ field }}">
                             <option value="">-- choose --</option>
-                            {% for value in table.get_field_values(field) %}
+                            {% for value, text in options[field] %}
                                 <option value="{{ value }}">{{ text }}</option>
                             {% endfor %}
                         </select>
+                    {% elif ftype == 'bool' %}
                         <select name="{{ field }}">
                             <option value="">--</option><option>true</option><option>false</option>
                         </select>
+                    {% elif ftype == 'datetime' %}
                         <input type="datatime-local" name="{{ field }}">
+                    {% elif ftype == 'number' %}
                         <input type="number" step="any" name="{{ field }}">
+                    {% else %}
                         <input type="{{ ftype }}" name="{{ field }}">
+                    {% endif %}
                     </label>
+                {% endfor %}
+
                 <br><button type="submit">Insert</button>
             </form>
         </div>
@@ -55,15 +63,22 @@
         <table>
             <tr>
                 <th></th>
+                 {% for c in columns %}<th>{{ c }}</th>{% endfor %}
             </tr>
+            {% for row in rows %}
             <tr>
                 <td>
-                    <form method="post" action="{{  url_for('delete_row', name=name) }}">
-                            onsubmit="return confirm('Delete this row?');"
+                    <form method="post" action="{{  url_for('delete_row', name=name) }}"
+                            onsubmit="return confirm('Delete this row?');">
+                        {% for k in table.pk %}
+                            <input type="hidden" name="{{ k }}" value="{{ row[k] }}">
+                        {% endfor %}
                         <button class="delete">Delete</button>
                     </form>
-                </td>  
+                </td>
+                {% for c in columns %}<td>{{ row[c] if row[c] is not none else '' }}</td>{% endfor %}  
             </tr>
+            {% endfor %}
         </table>
     </main>
 </body>
