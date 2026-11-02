@@ -20,6 +20,9 @@
         table { border-collapse: collapse; width: 100%; background: white; font-size: 13px; }
         th, td { border: 1px solid #ddd; padding: 6px; text-align: left; max-width: 220px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
         th { background: #eee; }
+        html, body { height: auto; overflow: auto; }
+        .rows-box { max-height: 70vh; overflow: auto; border: 1px solid #ddd; background: white; }
+        .rows-box th { position: sticky; top: 0; background: #eee; }
     </style>
 </head>
 <body>
@@ -70,6 +73,7 @@
             </form>
         </div>
 
+        <div class="rows-box">
         <table>
             <tr>
                 <th></th>
@@ -90,6 +94,7 @@
             </tr>
             {% endfor %}
         </table>
+        </div>
     </main>
 </body>
 </html>
