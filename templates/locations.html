@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Locations{% endblock %}
+
+{% block head %}
+    <style>
+        .location-search { display: block; width: 100%; max-width: 400px; box-sizing: border-box; padding: 8px; margin-bottom: 16px; font-size: 14px; }
+        .location { padding: 12px 0; border-top: 1px solid #eee; }
+        .location:first-of-type { border-top: 0; }
+        .location-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+        .location-name { flex: 1 1 220px; font-weight: bold; }
+        .status { min-width: 56px; font-size: 13px; font-weight: bold; }
+        .status.open { color: #1f6b42; }
+        .status.closed { color: #a52a1f; }
+        .capacity { display: flex; flex: 1 1 260px; align-items: center; gap: 10px; }
+        .capacity-track { flex: 1; height: 14px; background: #e4e4e4; border-radius: 7px; overflow: hidden; }
+        .capacity-fill { width: 0; height: 100%; transition: width 0.4s, background-color 0.4s; }
+        .capacity-percent { min-width: 56px; font-size: 13px; text-align: right; }
+        .location-hours { margin-top: 10px; }
+        .location-hours table { width: auto; }
+    </style>
+{% endblock %}
+
+{% block content %}
+        <h2>Locations</h2>
+
+        <input type="search" id="location-search" class="location-search"
+               placeholder="Search by name or address" aria-label="Search locations">
+
+        <p id="location-search-empty" hidden>No locations match your search.</p>
+
+        <div id="locations" data-status-url="{{ url_for('locations_status') }}">
+            {% for address, group in locations|groupby('address') %}
+            <section class="box location-group">
+                <h3>{{ address }}</h3>
+                {% for loc in group %}
+                <div class="location" data-location-id="{{ loc.location_id }}"
+                     data-hours-url="{{ url_for('location_hours', location_id=loc.location_id) }}">
+                    <div class="location-summary">
+                        <span class="location-name">{{ loc.name }}</span>
+                        <span class="status {{ 'open' if loc.is_open_now else 'closed' }}">{{ 'Open' if loc.is_open_now else 'Closed' }}</span>
+                        <div class="capacity" data-percent="{{ loc.percent_full }}">
+                            <div class="capacity-track" aria-hidden="true"><div class="capacity-fill"></div></div>
+                            <span class="capacity-percent"></span>
+                        </div>
+                        <button type="button" class="more-info" aria-expanded="false">More info</button>
+                    </div>
+                    <div class="location-hours" hidden></div>
+                </div>
+                {% endfor %}
+            </section>
+            {% else %}
+            <p>No locations found.</p>
+            {% endfor %}
+        </div>
+
+        <script src="{{ url_for('static', filename='js/locations.js') }}"></script>
+{% endblock %}
