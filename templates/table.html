@@ -2,6 +2,14 @@
 
 {% block title %}{{ name }}{% endblock %}
 
+{% block subnav %}
+    <nav>
+        {% for t in tables %}
+            <a href="{{ url_for('show_table', name=t) }}" class="{{ 'current' if t == name}}">{{ t }}</a>
+        {% endfor %}
+    </nav>
+{% endblock %}
+
 {% block content %}
         <h2>{{ name }} ({{ rows|length }} rows)</h2>
 

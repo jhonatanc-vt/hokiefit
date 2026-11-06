@@ -34,13 +34,10 @@
 
     <nav>
         <a href="{{ url_for('show_locations') }}" class="{{ 'current' if request.endpoint == 'show_locations' }}">Location</a>
+        <a href="{{ url_for('show_table', name='gym_user') }}" class="{{ 'current' if request.endpoint == 'show_table' }}">Tables</a>
     </nav>
 
-    <nav>
-        {% for t in tables %}
-            <a href="{{ url_for('show_table', name=t) }}" class="{{ 'current' if t == name}}">{{ t }}</a>
-        {% endfor %}
-    </nav>
+    {% block subnav %}{% endblock %}
 
     <main>
         {% for category, message in get_flashed_messages(with_categories=true) %}

@@ -147,7 +147,7 @@ def show_locations():
     locations = fetch_locations()
     with get_conn() as conn:
         version = conn.execute("SHOW server_version").fetchone()[0].split(" ")[0]
-    return render_template("locations.html", tables=TABLES, locations=locations, version=version)
+    return render_template("locations.html", locations=locations, version=version)
 
 
 @app.route("/api/locations/status")
