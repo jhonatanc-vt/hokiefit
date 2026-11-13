@@ -1,14 +1,17 @@
 import uuid
+from functools import wraps
 
 import psycopg
-from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
 from psycopg import sql
 from psycopg.rows import dict_row
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from db import get_conn
 
 app = Flask(__name__)
 app.secret_key = "cs4604-group 12"
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # other sites can't submit the admin forms as a logged-in user
 
 TABLES = {
     "gym_user": {
@@ -114,6 +117,46 @@ ORDER BY array_position(
 );
 """
 
+SQL_USER_LOGIN = """
+SELECT u.user_id, u.email, u.role, l.password_hash
+FROM gym_user u
+JOIN user_login l ON l.user_id = u.user_id
+WHERE u.email = %(email)s;
+"""
+
+SQL_UPDATE_LAST_LOGIN = """
+UPDATE user_login
+SET last_login_at = now(), updated_at = now()
+WHERE user_id = %(user_id)s;
+"""
+
+SQL_USER_ROLE = """
+SELECT role FROM gym_user WHERE user_id = %(user_id)s;
+"""
+
+SQL_ADMIN_USERS = """
+SELECT u.user_id, u.first_name, u.last_name, u.email, u.role,
+       l.user_id IS NOT NULL AS has_login,
+       l.last_login_at
+FROM gym_user u
+LEFT JOIN user_login l ON l.user_id = u.user_id
+ORDER BY u.last_name, u.first_name;
+"""
+
+SQL_CREATE_ADMIN = """
+INSERT INTO gym_user (first_name, last_name, email, phone_number, role)
+VALUES (%(first_name)s, %(last_name)s, %(email)s, %(phone_number)s, 'staff')
+RETURNING user_id;
+"""
+
+# Also creates the login if this user doesn't have one yet
+SQL_SET_PASSWORD = """
+INSERT INTO user_login (user_id, password_hash)
+VALUES (%(user_id)s, %(password_hash)s)
+ON CONFLICT (user_id) DO UPDATE
+SET password_hash = EXCLUDED.password_hash, updated_at = now();
+"""
+
 
 def fetch_locations():
     with get_conn() as conn:
@@ -135,6 +178,133 @@ def dropdown_options(table):
         id=sql.Identifier(id_col), t=sql.Identifier(table))
     with get_conn() as conn:
         return conn.execute(query).fetchall()
+
+
+@app.before_request
+def require_login():
+    # Everything needs a session except the login page and its static files
+    if request.endpoint in ("login", "static") or "user_id" in session:
+        return None
+    if request.path.startswith("/api/"):
+        return jsonify(error="Login required"), 401
+    return redirect(url_for("login"))
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "GET":
+        if "user_id" in session:
+            return redirect(url_for("home"))
+        return render_template("login.html")
+
+    email = request.form.get("email", "").strip()
+    password = request.form.get("password", "")
+
+    with get_conn() as conn:
+        cur = conn.cursor(row_factory=dict_row)
+        cur.execute(SQL_USER_LOGIN, {"email": email})
+        user = cur.fetchone()
+
+        # Same message for both failures, so the form doesn't reveal which emails exist
+        if user is None or not check_password_hash(user["password_hash"], password):
+            flash("Invalid email or password.", "error")
+            return render_template("login.html", email=email), 401
+
+        conn.execute(SQL_UPDATE_LAST_LOGIN, {"user_id": user["user_id"]})
+
+    session.clear()
+    session["user_id"] = str(user["user_id"])
+    session["email"] = user["email"]
+    session["role"] = user["role"]  # only decides whether the nav shows Admin; see staff_required
+    return redirect(url_for("home"))
+
+
+@app.post("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
+def staff_required(view):
+    # Checks the database each time, so a role change applies straight away
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        with get_conn() as conn:
+            row = conn.execute(SQL_USER_ROLE, {"user_id": session["user_id"]}).fetchone()
+        if row is None or row[0] != "staff":
+            return "Staff access required", 403
+        return view(*args, **kwargs)
+    return wrapped
+
+
+def read_new_password():
+    """Returns the submitted password, or None after flashing what's wrong with it."""
+    password = request.form.get("password", "")
+    if not password:
+        flash("Password is required.", "error")
+        return None
+    if password != request.form.get("confirm_password", ""):
+        flash("Passwords do not match.", "error")
+        return None
+    return password
+
+
+@app.route("/admin")
+@staff_required
+def admin():
+    with get_conn() as conn:
+        cur = conn.cursor(row_factory=dict_row)
+        cur.execute(SQL_ADMIN_USERS)
+        users = cur.fetchall()
+    return render_template("admin.html", users=users)
+
+
+@app.post("/admin/create")
+@staff_required
+def admin_create():
+    params = {
+        "first_name": request.form.get("first_name", "").strip(),
+        "last_name": request.form.get("last_name", "").strip(),
+        "email": request.form.get("email", "").strip(),
+        "phone_number": request.form.get("phone_number", "").strip() or None,
+    }
+    if not (params["first_name"] and params["last_name"] and params["email"]):
+        flash("First name, last name and email are required.", "error")
+        return redirect(url_for("admin"))
+
+    password = read_new_password()
+    if password is None:
+        return redirect(url_for("admin"))
+
+    try:
+        # One transaction, so a failure can't leave a user without a login
+        with get_conn() as conn:
+            user_id = conn.execute(SQL_CREATE_ADMIN, params).fetchone()[0]
+            conn.execute(SQL_SET_PASSWORD, {"user_id": user_id,
+                                            "password_hash": generate_password_hash(password)})
+        flash(f"Created admin {params['email']}.", "ok")
+    except psycopg.errors.UniqueViolation:
+        flash(f"A user with email {params['email']} already exists.", "error")
+    except psycopg.Error as e:
+        flash(f"Create failed: {e.diag.message_primary}. {e.diag.message_detail or ''}", "error")
+    return redirect(url_for("admin"))
+
+
+@app.post("/admin/password")
+@staff_required
+def admin_password():
+    password = read_new_password()
+    if password is None:
+        return redirect(url_for("admin"))
+
+    try:
+        with get_conn() as conn:
+            conn.execute(SQL_SET_PASSWORD, {"user_id": request.form.get("user_id", ""),
+                                            "password_hash": generate_password_hash(password)})
+        flash("Password updated.", "ok")
+    except psycopg.Error as e:
+        flash(f"Password change failed: {e.diag.message_primary}. {e.diag.message_detail or ''}", "error")
+    return redirect(url_for("admin"))
 
 
 @app.route("/")
