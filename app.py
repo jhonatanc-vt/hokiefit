@@ -11,12 +11,8 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from db import get_conn
 
 app = Flask(__name__)
-<<<<<<< HEAD
-app.secret_key = "cs4604-group 12"
-=======
 # The secret key signs the login cookie. It lives in .env so it is not on GitHub.
 app.secret_key = os.getenv("SECRET_KEY") or "dev-only-change-me"
->>>>>>> origin/main
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # other sites can't submit the admin forms as a logged-in user
 
 TABLES = {
@@ -127,11 +123,7 @@ SQL_USER_LOGIN = """
 SELECT u.user_id, u.email, u.role, l.password_hash
 FROM gym_user u
 JOIN user_login l ON l.user_id = u.user_id
-<<<<<<< HEAD
-WHERE u.email = %(email)s;
-=======
 WHERE lower(u.email) = lower(%(email)s);   -- emails are not case-sensitive
->>>>>>> origin/main
 """
 
 SQL_UPDATE_LAST_LOGIN = """
@@ -160,8 +152,6 @@ RETURNING user_id;
 """
 
 # Also creates the login if this user doesn't have one yet
-<<<<<<< HEAD
-=======
 SQL_EMAIL_TAKEN = """
 SELECT 1 FROM gym_user WHERE lower(email) = lower(%(email)s);
 """
@@ -181,7 +171,6 @@ JOIN user_login l ON l.user_id = u.user_id
 WHERE u.user_id = %(user_id)s;
 """
 
->>>>>>> origin/main
 SQL_SET_PASSWORD = """
 INSERT INTO user_login (user_id, password_hash)
 VALUES (%(user_id)s, %(password_hash)s)
@@ -189,7 +178,46 @@ ON CONFLICT (user_id) DO UPDATE
 SET password_hash = EXCLUDED.password_hash, updated_at = now();
 """
 
-<<<<<<< HEAD
+SQL_USER_LOGIN = """
+SELECT u.user_id, u.email, u.role, l.password_hash
+FROM gym_user u
+JOIN user_login l ON l.user_id = u.user_id
+WHERE u.email = %(email)s;
+"""
+
+SQL_UPDATE_LAST_LOGIN = """
+UPDATE user_login
+SET last_login_at = now(), updated_at = now()
+WHERE user_id = %(user_id)s;
+"""
+
+SQL_USER_ROLE = """
+SELECT role FROM gym_user WHERE user_id = %(user_id)s;
+"""
+
+SQL_ADMIN_USERS = """
+SELECT u.user_id, u.first_name, u.last_name, u.email, u.role,
+       l.user_id IS NOT NULL AS has_login,
+       l.last_login_at
+FROM gym_user u
+LEFT JOIN user_login l ON l.user_id = u.user_id
+ORDER BY u.last_name, u.first_name;
+"""
+
+SQL_CREATE_ADMIN = """
+INSERT INTO gym_user (first_name, last_name, email, phone_number, role)
+VALUES (%(first_name)s, %(last_name)s, %(email)s, %(phone_number)s, 'staff')
+RETURNING user_id;
+"""
+
+# Also creates the login if this user doesn't have one yet
+SQL_SET_PASSWORD = """
+INSERT INTO user_login (user_id, password_hash)
+VALUES (%(user_id)s, %(password_hash)s)
+ON CONFLICT (user_id) DO UPDATE
+SET password_hash = EXCLUDED.password_hash, updated_at = now();
+"""
+
 # One row per activity. signed_up counts its registrations; is_registered says
 # whether the logged-in user is one of them.
 SQL_ACTIVITIES = """
@@ -237,8 +265,6 @@ DELETE FROM registration
 WHERE user_id = %(user_id)s::uuid AND activity_id = %(activity_id)s::uuid;
 """
 
-=======
->>>>>>> origin/main
 
 def fetch_locations():
     with get_conn() as conn:
@@ -265,11 +291,7 @@ def dropdown_options(table):
 @app.before_request
 def require_login():
     # Everything needs a session except the login page and its static files
-<<<<<<< HEAD
-    if request.endpoint in ("login", "static") or "user_id" in session:
-=======
     if request.endpoint in ("login", "signup", "static") or "user_id" in session:
->>>>>>> origin/main
         return None
     if request.path.startswith("/api/"):
         return jsonify(error="Login required"), 401
@@ -283,11 +305,7 @@ def login():
             return redirect(url_for("home"))
         return render_template("login.html")
 
-<<<<<<< HEAD
-    email = request.form.get("email", "").strip()
-=======
     email = request.form.get("email", "").strip().lower()
->>>>>>> origin/main
     password = request.form.get("password", "")
 
     with get_conn() as conn:
@@ -322,23 +340,12 @@ def staff_required(view):
         with get_conn() as conn:
             row = conn.execute(SQL_USER_ROLE, {"user_id": session["user_id"]}).fetchone()
         if row is None or row[0] != "staff":
-<<<<<<< HEAD
-            return "Staff access required", 403
-=======
             flash("Only staff can open that page.", "error")
             return redirect(url_for("show_locations"))
->>>>>>> origin/main
         return view(*args, **kwargs)
     return wrapped
 
 
-<<<<<<< HEAD
-def read_new_password():
-    """Returns the submitted password, or None after flashing what's wrong with it."""
-    password = request.form.get("password", "")
-    if not password:
-        flash("Password is required.", "error")
-=======
 MIN_PASSWORD_LENGTH = 8
 
 
@@ -347,7 +354,6 @@ def read_new_password():
     password = request.form.get("password", "")
     if len(password) < MIN_PASSWORD_LENGTH:
         flash(f"Password must be at least {MIN_PASSWORD_LENGTH} characters.", "error")
->>>>>>> origin/main
         return None
     if password != request.form.get("confirm_password", ""):
         flash("Passwords do not match.", "error")
@@ -371,22 +377,15 @@ def admin_create():
     params = {
         "first_name": request.form.get("first_name", "").strip(),
         "last_name": request.form.get("last_name", "").strip(),
-<<<<<<< HEAD
-        "email": request.form.get("email", "").strip(),
-=======
         "email": request.form.get("email", "").strip().lower(),
->>>>>>> origin/main
         "phone_number": request.form.get("phone_number", "").strip() or None,
     }
     if not (params["first_name"] and params["last_name"] and params["email"]):
         flash("First name, last name and email are required.", "error")
         return redirect(url_for("admin"))
-<<<<<<< HEAD
-=======
     if email_taken(params["email"]):
         flash(f"A user with email {params['email']} already exists.", "error")
         return redirect(url_for("admin"))
->>>>>>> origin/main
 
     password = read_new_password()
     if password is None:
