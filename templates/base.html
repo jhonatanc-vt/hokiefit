@@ -29,13 +29,24 @@
 </head>
 <body>
     <header>
-        <b>HokieFit</b> &nbsp; <small>Connected to PostgreSQL {{ version }} (Supabase)</small>
+        <b>HokieFit</b>
+        {% if version %}&nbsp; <small>Connected to PostgreSQL {{ version }} (Supabase)</small>{% endif %}
     </header>
 
+    {% if session.get('user_id') %}
     <nav>
         <a href="{{ url_for('show_locations') }}" class="{{ 'current' if request.endpoint == 'show_locations' }}">Location</a>
+        <a href="{{ url_for('show_activities') }}" class="{{ 'current' if request.endpoint == 'show_activities' }}">Activities</a>
         <a href="{{ url_for('show_table', name='gym_user') }}" class="{{ 'current' if request.endpoint == 'show_table' }}">Tables</a>
+        {% if session.get('role') == 'staff' %}
+        <a href="{{ url_for('admin') }}" class="{{ 'current' if request.endpoint == 'admin' }}">Admin</a>
+        {% endif %}
+        <form method="post" action="{{ url_for('logout') }}" style="display: inline;">
+            <small>{{ session.get('email') }}</small>
+            <button type="submit">Log out</button>
+        </form>
     </nav>
+    {% endif %}
 
     {% block subnav %}{% endblock %}
 
