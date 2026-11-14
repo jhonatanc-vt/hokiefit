@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Activities{% endblock %}
+
+{% block head %}
+    <style>
+        .activity-search { display: block; width: 100%; max-width: 400px; box-sizing: border-box; padding: 8px; margin-bottom: 16px; font-size: 14px; }
+        .activity { padding: 12px 0; border-top: 1px solid #eee; }
+        .activity:first-child { border-top: 0; }
+        .activity-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+        .activity-main { flex: 1 1 260px; }
+        .activity-name { font-weight: bold; }
+        .activity-meta { margin-top: 3px; font-size: 13px; color: #555; }
+        .activity-start { flex: 0 1 190px; font-size: 13px; }
+        .activity-spots { min-width: 90px; font-size: 13px; font-weight: bold; }
+        .activity-spots.full { color: #a52a1f; }
+        .activity-actions { display: flex; gap: 8px; align-items: center; }
+        .activity-actions form { margin: 0; }
+        .activity-actions .registered { font-size: 13px; color: #1f6b42; font-weight: bold; }
+        button.secondary { background: white; color: #861f41; border: 1px solid #861f41; }
+        button:disabled { background: #bbb; cursor: default; }
+        .activity-details { margin-top: 10px; padding: 10px; background: #fafafa; border-left: 3px solid #861f41; font-size: 14px; }
+        .activity-details p { margin: 0 0 6px; }
+        .activity-details p:last-child { margin-bottom: 0; }
+    </style>
+{% endblock %}
+
+{% block content %}
+        <h2>Activity Registration</h2>
+
+        <input type="search" id="activity-search" class="activity-search"
+               placeholder="Search by activity, group or location" aria-label="Search activities">
+
+        <p id="activity-search-empty" hidden>No activities match your search.</p>
+
+        <section class="box" id="activities">
+            {% for a in activities %}
+            {% set full = a.signed_up >= a.capacity %}
+            <div class="activity"
+                 data-search="{{ [a.name, a.group_name, a.location_name]|join(' ')|lower }}">
+                <div class="activity-summary">
+                    <div class="activity-main">
+                        <div class="activity-name">{{ a.name }}</div>
+                        <div class="activity-meta">{{ a.group_name }} &middot; {{ a.location_name }}</div>
+                    </div>
+                    <span class="activity-start">{{ a.start_time.strftime('%a, %b %d %Y, %I:%M %p') }}</span>
+                    <span class="activity-spots {{ 'full' if full }}">{{ a.signed_up }} / {{ a.capacity }} signed up</span>
+                    <div class="activity-actions">
+                        <button type="button" class="secondary view-description" aria-expanded="false">View description</button>
+                        {% if a.is_registered %}
+                            <span class="registered">Registered</span>
+                            {% if not a.has_started %}
+                            <form method="post" action="{{ url_for('unregister_activity', activity_id=a.activity_id) }}">
+                                <button type="submit" class="delete">Cancel</button>
+                            </form>
+                            {% endif %}
+                        {% elif a.has_started %}
+                            <button type="button" disabled>Started</button>
+                        {% elif full %}
+                            <button type="button" disabled>Full</button>
+                        {% else %}
+                            <form method="post" action="{{ url_for('register_activity', activity_id=a.activity_id) }}">
+                                <button type="submit">Register</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="activity-details" hidden>
+                    <p>{{ a.description or 'No description provided.' }}</p>
+                    <p><b>Address:</b> {{ a.address }}</p>
+                </div>
+            </div>
+            {% else %}
+            <p>No activities found.</p>
+            {% endfor %}
+        </section>
+
+        <script src="{{ url_for('static', filename='js/activities.js') }}"></script>
+{% endblock %}
