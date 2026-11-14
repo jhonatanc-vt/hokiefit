@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}My account{% endblock %}
+
+{% block content %}
+<div class="box">
+    <h3 style="margin-top: 0;">My account</h3>
+    <table style="width: auto;">
+        <tr><th>Name</th><td>{{ me.first_name }} {{ me.last_name }}</td></tr>
+        <tr><th>Email</th><td>{{ me.email }}</td></tr>
+        <tr><th>Phone</th><td>{{ me.phone_number or '' }}</td></tr>
+        <tr><th>Role</th><td>{{ me.role }}</td></tr>
+        <tr><th>Member since</th><td>{{ me.date_joined }}</td></tr>
+        <tr><th>Last login</th><td>{{ me.last_login_at.strftime('%Y-%m-%d %H:%M') if me.last_login_at else '' }}</td></tr>
+    </table>
+</div>
+
+<div class="box">
+    <h3 style="margin-top: 0;">Change my password</h3>
+    <form class="insert" method="post" action="{{ url_for('account') }}">
+        <label>Current password <input type="password" name="current_password" autocomplete="current-password" required></label>
+        <label>New password <input type="password" name="password" autocomplete="new-password" minlength="8" required></label>
+        <label>Confirm new password <input type="password" name="confirm_password" autocomplete="new-password" minlength="8" required></label>
+        <div><button type="submit">Change password</button></div>
+    </form>
+</div>
+{% endblock %}

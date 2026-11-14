@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Sign up{% endblock %}
+
+{% block head %}
+<style>
+    .login { max-width: 360px; margin: 40px auto; }
+    .login h2 { margin-top: 0; }
+    .login label { display: block; margin-bottom: 12px; font-size: 13px; }
+    .login input { display: block; width: 100%; box-sizing: border-box; padding: 7px; margin-top: 3px; }
+    .login button { width: 100%; }
+    .login .hint { font-size: 12px; color: #666; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="box login">
+    <h2>Create an account</h2>
+    <form method="post" action="{{ url_for('signup') }}">
+        <label>First name <input type="text" name="first_name" value="{{ form.first_name or '' }}" required autofocus></label>
+        <label>Last name <input type="text" name="last_name" value="{{ form.last_name or '' }}" required></label>
+        <label>Email <input type="email" name="email" value="{{ form.email or '' }}" autocomplete="username" required></label>
+        <label>Phone number (optional) <input type="text" name="phone_number" value="{{ form.phone_number or '' }}"></label>
+        <label>Password <input type="password" name="password" autocomplete="new-password" minlength="8" required>
+            <span class="hint">At least 8 characters</span></label>
+        <label>Confirm password <input type="password" name="confirm_password" autocomplete="new-password" minlength="8" required></label>
+        <button type="submit">Sign up</button>
+    </form>
+    <p class="hint">Already have an account? <a href="{{ url_for('login') }}">Log in</a></p>
+</div>
+{% endblock %}
